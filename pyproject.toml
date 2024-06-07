@@ -1,0 +1,61 @@
+[tool.poetry]
+name = "YT-Spammer-Purge"
+version = "2.18.0b3+DinhHuy2010"
+description = "Allows you to filter and search for spammer comments on your channel and other's channel(s) in many different ways AND delete/report them all at once."
+authors = ["ThioJoe <unkhown email>"]
+license = "GPL-3.0-or-later"
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.9,<4.0"
+google-api-python-client = ">=2.41.0"
+google-auth-oauthlib = ">=0.5.1"
+protobuf = ">=4.21.11"
+colorama = "0.4.4"
+rtfunicode = "2.0"
+certifi = ">=2021.10.8"
+six = ">=1.16.0"
+levenshtein = ">=0.20.9"
+regex = ">=2022.3.15"
+rapidfuzz = ">=2.0.7"
+cryptography = ">=39.0.2"
+pwinput = ">=1.0.3"
+requests = "^2.31.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.4.3"
+
+
+[tool.poetry.group.benchmark-distance.dependencies]
+numpy = "^1.26.4"
+more-itertools = "^10.2.0"
+
+[tool.ruff]
+indent-width = 4  # Force 4 spaces per indentation level
+line-length = 320  # Set maximum line length to 100 characters
+
+
+[tool.ruff.lint]
+# List of error codes to ignore
+# Select specific classes of rules to apply
+select = [
+    "E",  # Error
+    "W",  # Warning
+    "F",  # Flake8's internal messages
+    "I",  # Informational
+    "B",  # Bugbear
+    "C4", # Comprehensive checks (custom or complex checks)
+    "ARG", # Argument related checks
+    "SIM"  # Similarity checks
+]
+ignore = [
+    "W291", # Trailing whitespace
+    # "W292", # No newline at end of file
+    "W293"  # Blank line contains whitespace
+]
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
