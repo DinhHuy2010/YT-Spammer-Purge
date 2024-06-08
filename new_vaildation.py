@@ -113,16 +113,6 @@ def _get_channel_id_from_url(channel_link: str) -> Union[str, None]:
     print(f"{channel_url=}")
     return channel_url.path[len("/channel/") :]
 
-
-def _get_channel_id_from_search(customURL: str) -> Union[str, None]:
-    response = YOUTUBE.search().list(part="snippet", q=customURL, maxResults=1, type="channel").execute()
-    if response.get("items"):
-        return response["items"][0]["snippet"]["channelId"]  # Get channel ID from custom channel URL username
-    else:
-        print(f"\n{F.LIGHTRED_EX}No Channel Found!{S.R} YouTube returned no results for that channel. Try entering the @handle instead.")
-        return None
-
-
 def _get_channel_id(user_input: str) -> Union[str, None]:
     notChannelList = ["?v", "v=", "/embed/", "/vi/", "?feature=", "/v/", "/e/"]
     channelPrefix = "/channel/"

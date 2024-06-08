@@ -23,8 +23,11 @@ from pwinput import pwinput
 
 TOKEN_FILE_NAME = 'token.pickle'
 TOKEN_ENCRYPTED_NAME = 'token.pickle.encrypted'
-from YTSpammerPurge import configVersion
-encrypt_config = load_config_file(onlyGetSettings=True, configVersion=configVersion)['encrypt_token_file']
+# WHAT THE HELL BRUH
+# TODO/XXX: Remove this
+# from YTSpammerPurge import configVersion
+# encrypt_config = load_config_file(onlyGetSettings=True, configVersion=configVersion)['encrypt_token_file']
+encrypt_config = True
 
 # Encryption Settings
 SALT_BYTES = 64
@@ -325,4 +328,6 @@ def initialize():
   
   return tokenData
 
-tokenData = initialize()
+# XXX: IMPORTS SIDE EFFECT LMAOOOOOOOOOOOOOOO
+# tokenData = initialize()
+tokenData = {}
