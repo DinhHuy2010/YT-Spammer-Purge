@@ -5,7 +5,7 @@ from typing import NoReturn
 
 from googleapiclient.errors import HttpError
 
-from Scripts.constants import B, F, S
+from Scripts.shared_imports import B, F, S
 
 
 def print_exception_reason(reason: str) -> None:

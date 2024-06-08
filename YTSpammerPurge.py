@@ -226,10 +226,10 @@ def main():
   # Disable colors before they are used anywhere
   if config['colors_enabled'] == False:
     # Disables colors entirely
-    init(autoreset=True, strip=True, convert=False)
+    colorama_init(autoreset=True, strip=True, convert=False)
   else:
     # Initiates colorama and creates shorthand variables for resetting colors
-    init(autoreset=True)
+    colorama_init(autoreset=True)
 
   # Check for program and list updates if auto updates enabled in config
   try:

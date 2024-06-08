@@ -11,7 +11,7 @@ from googleapiclient.errors import HttpError
 
 import Scripts.auth as auth
 import Scripts.validation as validation
-from Scripts.constants import B, F, S
+from Scripts.shared_imports import B, F, S
 
 ##########################################################################################
 ############################## UTILITY FUNCTIONS #########################################

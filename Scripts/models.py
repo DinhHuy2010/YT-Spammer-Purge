@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import NamedTuple, Optional, Union
+from typing import NamedTuple, Optional, TypeGuard, Union
 
 
 # Declare Classes
@@ -33,7 +33,11 @@ class MiscDataStore:
 class MainMenu:
     pass
 
-def is_main_menu_state(obj: Union[object, type]) -> bool:
+RETURN_TO_MAIN_MENU = MainMenu()
+
+def is_main_menu_state(obj: Union[object, type]) -> TypeGuard[MainMenu]:
+    if obj is RETURN_TO_MAIN_MENU:
+        return True
     if isinstance(obj, type):
         return issubclass(obj, MainMenu)
     return isinstance(obj, MainMenu)
@@ -41,4 +45,4 @@ def is_main_menu_state(obj: Union[object, type]) -> bool:
 class CurrentUser(NamedTuple):
     id: str
     name: str
-    configMatch: bool
+    configMatch: Optional[bool] = None

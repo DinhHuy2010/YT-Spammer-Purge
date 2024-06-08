@@ -1,14 +1,14 @@
 import base64
 import io
 import os
-from getpass import getpass
 from hmac import compare_digest
 from typing import Union
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
-from Scripts.constants import F
+from Scripts._vendor import pwinput
+from Scripts.shared_imports import F
 
 SALT_BYTES = 64
 SCRYPT_N = 2**18
@@ -61,10 +61,10 @@ def decrypt_file(
 
 def get_password(*, include_confirmation = False) -> bytes:
     while True:
-        pwd = getpass(prompt="Password: ")
+        pwd = pwinput.pwinput(prompt="Password: ")
         if not include_confirmation:
             return pwd.encode()
-        cpwd = getpass(prompt="Confirm password: ")
+        cpwd = pwinput.pwinput(prompt="Confirm password: ")
         if compare_digest(pwd, cpwd):
             return cpwd.encode()
         else:

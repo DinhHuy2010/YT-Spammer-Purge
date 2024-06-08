@@ -6,7 +6,7 @@ from typing import Optional
 
 import Scripts.auth as auth
 import Scripts.validation as validation
-from Scripts.constants import B, F, S
+from Scripts.shared_imports import B, F, S
 from Scripts.utils.errors import (
     HttpError,
     print_error_title_fetch,
@@ -26,11 +26,7 @@ def get_video_title(current, video_id):
         title = current.vidTitleDict[video_id]
     elif current.errorOccurred is False:
         try:
-            results = (
-                auth.YOUTUBE.videos()
-                .list(part="snippet", id=video_id, fields="items/snippet/title", maxResults=1)
-                .execute()
-            )
+            results = auth.YOUTUBE.videos().list(part="snippet", id=video_id, fields="items/snippet/title", maxResults=1).execute()
         except HttpError as hx:
             traceback.print_exc()
             print_http_error_during_scan(hx)

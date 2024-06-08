@@ -1,4 +1,4 @@
-from Scripts.constants import F, S
+from Scripts.shared_imports import F, S
 
 ############################### User Choice #################################
 
