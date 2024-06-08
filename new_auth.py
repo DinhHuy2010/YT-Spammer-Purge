@@ -2,8 +2,8 @@ import io
 import json
 import pathlib
 import sys
-from textwrap import dedent
 import traceback
+from textwrap import dedent
 from typing import Any, Mapping, NoReturn, Optional, TypeGuard, Union, cast
 
 from cryptography.fernet import InvalidToken
@@ -16,7 +16,6 @@ from Scripts.models import CurrentUser
 from Scripts.shared_imports import B, F, S
 from Scripts.utils import encryption
 from Scripts.utils.errors import fail_client_secrets_loading, fail_to_authorize, no_client_secrets
-from new_vaildation import validate_channel_id
 
 # from googleapiclient.discovery import build as discovery_build
 
@@ -35,11 +34,6 @@ DISCOVERY_SERVICE_URL = "https://youtube.googleapis.com/$discovery/rest?version=
 _youtube_service: Optional[Any] = None
 _current_user: Optional[CurrentUser] = None
 _ENCRYPTED_TOKEN = True
-
-
-def _read_discovery_doc():
-    with YOUTUBE_DISCOVERY_DOCPATH.open("r") as r:
-        return json.load(r)
 
 
 def resolve_client_secrets_location() -> Optional[pathlib.Path]:
@@ -202,7 +196,12 @@ class ChannelIDError(Exception):
 
 # Get channel ID and channel title of the currently authorized user
 def get_current_user(your_channel_id_config: str = "ask") -> CurrentUser:
+    global _current_user
+
+    if _current_user is not None:
+        return _current_user
     # Define fetch function so it can be re-used if issue and need to re-run it
+    from new_vaildation import validate_channel_id
     YOUTUBE = authorize_service()
 
     def fetch_user():
@@ -270,7 +269,8 @@ def get_current_user(your_channel_id_config: str = "ask") -> CurrentUser:
             input("Please check the config file. Press Enter to Exit...")
             sys.exit()
 
-    return CurrentUser(minechannelID, channelTitle, configMatch)
+    _current_user = CurrentUser(minechannelID, channelTitle, configMatch)
+    return _current_user
 
 
 def _test():
