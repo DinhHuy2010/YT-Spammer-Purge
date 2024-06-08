@@ -73,7 +73,7 @@ def _get_more_video_info(possibleVideoID, printer, pass_exception) -> Union[Vide
             input("\nPress Enter to return to the main menu...")
             return RETURN_TO_MAIN_MENU
 
-        return VideoVaildationResult(True, possibleVideoID, videoTitle, commentCount, channelID, channelTitle)
+        return VideoVaildationResult(True, possibleVideoID, videoTitle, int(commentCount), channelID, channelTitle)
     except Exception:
         printer(f"\n{B.RED}{F.BLACK}Invalid Video link or ID!{S.R} Video IDs are 11 characters long.")
         return VideoVaildationResult(False, None, None, None, None)
