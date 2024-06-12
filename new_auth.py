@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import io
 import json
 import pathlib
 import sys
 import traceback
 from textwrap import dedent
-from typing import Any, Mapping, NoReturn, Optional, TypeGuard, Union, cast
+from typing import TYPE_CHECKING, Mapping, NoReturn, Optional, TypeGuard, Union, cast
 
 from cryptography.fernet import InvalidToken
 from google.auth.transport.requests import Request
@@ -17,7 +19,8 @@ from Scripts.shared_imports import B, F, S
 from Scripts.utils import encryption
 from Scripts.utils.errors import fail_client_secrets_loading, fail_to_authorize, no_client_secrets
 
-# from googleapiclient.discovery import build as discovery_build
+if TYPE_CHECKING:
+    from googleapiclient._apis.youtube.v3 import YouTubeResource  # type: ignore
 
 TOKEN_FILE_PATH = pathlib.Path("token.pickle").resolve()
 TOKEN_FILE_PATH_ENCRYPTED = TOKEN_FILE_PATH.with_suffix(TOKEN_FILE_PATH.suffix + ".encrypted")
@@ -31,7 +34,7 @@ API_VERSION = "v3"
 DISCOVERY_SERVICE_URL = "https://youtube.googleapis.com/$discovery/rest?version=v3"
 
 # globals
-_youtube_service: Optional[Any] = None
+_youtube_service: Optional["YouTubeResource"] = None
 _current_user: Optional[CurrentUser] = None
 _ENCRYPTED_TOKEN = True
 
@@ -158,7 +161,7 @@ def remove_token_file():
     TOKEN_FILE_PATH_ENCRYPTED.unlink(missing_ok=True)
 
 
-def _authorize_service():
+def _authorize_service() -> YouTubeResource:
     creds = load_credentials_from_token()
     refreshed = False
     if not is_creds_vaild(creds):
@@ -169,23 +172,25 @@ def _authorize_service():
         save_credentials(creds, refreshed)
 
     ytservice = discovery_build(serviceName=API_SERVICE_NAME, version=API_VERSION, discoveryServiceUrl=DISCOVERY_SERVICE_URL, credentials=creds, cache_discovery=False, cache=None)
-    return ytservice
+    return ytservice  # type: ignore
 
 
-def authorize_service() -> Union[Any, NoReturn]:
+def authorize_service() -> Union["YouTubeResource", NoReturn]:
     global _youtube_service
     if _youtube_service is not None:
         return _youtube_service
 
     while True:
         try:
-            _youtube_service = _authorize_service()
+            service = _authorize_service()
             break
         except Exception as exc:
             if not fail_to_authorize(exc):
                 sys.exit()
             else:
                 remove_token_file()
+
+    _youtube_service = service  # Hack to force set service
 
     return _youtube_service
 
@@ -200,8 +205,10 @@ def get_current_user(your_channel_id_config: str = "ask") -> CurrentUser:
 
     if _current_user is not None:
         return _current_user
-    # Define fetch function so it can be re-used if issue and need to re-run it
+
     from new_vaildation import validate_channel_id
+    # Define fetch function so it can be re-used if issue and need to re-run it
+
     YOUTUBE = authorize_service()
 
     def fetch_user():
@@ -217,10 +224,11 @@ def get_current_user(your_channel_id_config: str = "ask") -> CurrentUser:
         return results
 
     results = fetch_user()
+    items = results["items"]
 
     # Fetch the channel ID and title from the API response
     # Catch exceptions if problems getting info
-    if len(results) == 0:  # Check if results are empty
+    if not items or not results:  # Check if results are empty
         print("\n----------------------------------------------------------------------------------------")
         print(f"{F.YELLOW}Error Getting Current User{S.R}: The YouTube API responded, but did not provide a Channel ID.")
         print(f"{F.CYAN}Known Possible Causes:{S.R}")
@@ -233,13 +241,14 @@ def get_current_user(your_channel_id_config: str = "ask") -> CurrentUser:
         YOUTUBE = authorize_service()
         results = fetch_user()  # Try again
 
-    item = results["items"][0]
+    item = items[0]
+
     minechannelID = item["id"]
     try:
-        IDCheck = validate_channel_id(minechannelID)
+        IDCheck = validate_channel_id(minechannelID, ytservice=YOUTUBE)
         if IDCheck.isVaild is False:
             raise ChannelIDError
-        channelTitle = item["snippet"].get("title")  # If channel ID was found, but not channel title/name
+        channelTitle = item.get("snippet", {}).get("title")  # If channel ID was found, but not channel title/name
         if channelTitle is None:
             print("Error Getting Current User: Channel ID was found, but channel title was not retrieved. If this occurs again, try deleting 'token.pickle' file and re-running. If that doesn't work, consider filing a bug report on the GitHub project 'issues' page.")
             print("> NOTE: The program may still work - You can try continuing. Just check the channel ID is correct: " + str(minechannelID))
@@ -274,10 +283,8 @@ def get_current_user(your_channel_id_config: str = "ask") -> CurrentUser:
 
 
 def _test():
-    service = authorize_service()
-    query = service.channels().list(part="snippet", mine=True)
-    result = query.execute()
-    print(result)
+    user = get_current_user()
+    print(user)
 
 
 if __name__ == "__main__":

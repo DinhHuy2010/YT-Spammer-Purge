@@ -11,13 +11,16 @@ __version__ = "1.0.3"
 
 import getpass as gp
 import sys
+from typing import Optional
 
 
-def _getch() -> str:
+def _getch() -> Optional[str]:
     if sys.platform == "win32":
         from msvcrt import getch
-
-        return getch().decode()
+        try:
+            return getch().decode()
+        except UnicodeDecodeError:
+            return None
     else:
         import termios
         import tty
@@ -47,7 +50,11 @@ def pwinput(prompt: str = "Password: ", mask: str = "*") -> str:
     sys.stdout.flush()
 
     while True:
-        key = ord(_getch())
+        char = _getch()
+        if char is None:
+            # invaild char, skip it.
+            continue
+        key = ord(char)
         if key == 13:  # Enter key pressed.
             sys.stdout.write("\n")
             return "".join(enteredPassword)

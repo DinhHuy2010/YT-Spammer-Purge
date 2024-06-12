@@ -23,6 +23,7 @@ cryptography = ">=39.0.2"
 pwinput = ">=1.0.3"
 requests = "^2.31.0"
 beautifulsoup4 = "^4.12.3"
+google-api-python-client-stubs = "^1.26.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.4.3"
@@ -56,6 +57,8 @@ ignore = [
     "W293"  # Blank line contains whitespace
 ]
 
+[tool.pyright]
+reportTypedDictNotRequiredAccess = false
 
 [build-system]
 requires = ["poetry-core"]

@@ -133,6 +133,7 @@ def fail_client_secrets_loading(jx: JSONDecodeError) -> NoReturn:
 
 def fail_to_authorize(exc: Exception) -> bool:
     if "invalid_grant" in str(exc):
+        traceback.print_exception(exc)
         print(f"{F.YELLOW}[!] Invalid token{S.R} - Requires Re-Authentication")
         return True
     else:

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from html import unescape
-from typing import NamedTuple, Optional, Union, cast
+from typing import TYPE_CHECKING, NamedTuple, Optional, Union, cast
 from urllib.parse import urlparse
 
 import requests
@@ -9,6 +11,9 @@ from new_auth import authorize_service
 from Scripts.models import RETURN_TO_MAIN_MENU, MainMenu
 from Scripts.shared_imports import B, F, S, re
 from Scripts.utils.stringstuff import check_list_against_string
+
+if TYPE_CHECKING:
+    from googleapiclient._apis.youtube.v3 import YouTubeResource  # type: ignore
 
 
 class VideoVaildationResult(NamedTuple):
@@ -29,12 +34,18 @@ class ChannelVaildationResult(NamedTuple):
 YOUTUBE_VIDEO_LINK_REGEX = re.compile(r"^\s*(?P<video_url>(?:(?:https?:)?\/\/)?(?:(?:www|m)\.)?(?:youtube\.com|youtu.be)(?:\/(?:[\w\-]+\?v=|embed\/|v\/)?))?(?P<video_id>[\w\-]{11})(?:(?(video_url)\S+|$))?\s*$")
 
 
+def _get_youtube_service(service: Optional["YouTubeResource"]):
+    if service is None:
+        return authorize_service()
+    return service
+
+
 def _wrap_print(silent):
     return (lambda *args, **kwargs: None) if silent is True else print  # noqa: ARG005
 
 
-def _get_more_video_info(possibleVideoID, printer, pass_exception) -> Union[VideoVaildationResult, MainMenu]:
-    YOUTUBE = authorize_service()
+def _get_more_video_info(possibleVideoID, printer, pass_exception, *, ytservice=None) -> Union[VideoVaildationResult, MainMenu]:
+    YOUTUBE = _get_youtube_service(ytservice)
     try:
         response = (
             YOUTUBE.videos()
@@ -79,7 +90,15 @@ def _get_more_video_info(possibleVideoID, printer, pass_exception) -> Union[Vide
         return VideoVaildationResult(False, None, None, None, None)
 
 
-def validate_video_id(user_input: str, silent: bool = False, pass_exception: bool = False, basicCheck: bool = False) -> Union[VideoVaildationResult, MainMenu]:
+def validate_video_id(
+    user_input: str,
+    /,
+    *,
+    silent: bool = False,
+    pass_exception: bool = False,
+    basicCheck: bool = False,
+    ytservice: Optional["YouTubeResource"] = None,
+) -> Union[VideoVaildationResult, MainMenu]:
     printer = _wrap_print(silent=silent)
     user_input = user_input.strip()
     match = YOUTUBE_VIDEO_LINK_REGEX.match(user_input)
@@ -97,7 +116,7 @@ def validate_video_id(user_input: str, silent: bool = False, pass_exception: boo
         if basicCheck is True:
             return VideoVaildationResult(len(possibleVideoID) == 11)
         else:
-            return _get_more_video_info(possibleVideoID, printer, pass_exception)
+            return _get_more_video_info(possibleVideoID, printer, pass_exception, ytservice=ytservice)
 
 
 def _get_channel_id_from_url(channel_link: str) -> Union[str, None]:
@@ -152,8 +171,8 @@ def _get_channel_id(user_input: str) -> Union[str, None]:
         return None
 
 
-def validate_channel_id(inputted_channel: str) -> ChannelVaildationResult:
-    YOUTUBE = authorize_service()
+def validate_channel_id(inputted_channel: str, /, *, ytservice: Optional["YouTubeResource"] = None) -> ChannelVaildationResult:
+    YOUTUBE = _get_youtube_service(ytservice)
     inputted_channel = inputted_channel.strip()
 
     # Check if link is actually a video link / ID
@@ -164,9 +183,7 @@ def validate_channel_id(inputted_channel: str) -> ChannelVaildationResult:
 
     isolatedChannelID = _get_channel_id(inputted_channel)
 
-    is_vaild_id = isolatedChannelID is not None and len(isolatedChannelID) == 24 and isolatedChannelID[:2] == "UC"
-
-    if not is_vaild_id:
+    if isolatedChannelID is None or len(isolatedChannelID) != 24 or isolatedChannelID[:2] != "UC":
         print(f"\n{B.RED}{F.BLACK}Invalid Channel link or ID!{S.R} Channel IDs are 24 characters long and begin with 'UC'.")
         return ChannelVaildationResult(False, None, None)
     response = YOUTUBE.channels().list(part="snippet", id=isolatedChannelID).execute()
@@ -177,10 +194,12 @@ def validate_channel_id(inputted_channel: str) -> ChannelVaildationResult:
         print(f"{F.LIGHTRED_EX}Error{S.R}: Unable to Get Channel Title. Please check the channel ID.")
         return ChannelVaildationResult(False, None, None)
 
+
 def _test() -> None:
     video_test_input = "https://www.youtube.com/watch?v=pCYHkmU9kqw"
     result = validate_video_id(video_test_input)
     print(result)
+
 
 if __name__ == "__main__":
     _test()
