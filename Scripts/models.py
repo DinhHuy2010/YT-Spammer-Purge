@@ -46,3 +46,30 @@ class CurrentUser(NamedTuple):
     id: str
     name: str
     configMatch: Optional[bool] = None
+
+# vaildation models
+class VideoVaildationResult(NamedTuple):
+    isVaild: bool
+    possibleVideoID: Optional[str] = None
+    videoTitle: Optional[str] = None
+    commentCount: Optional[int] = None
+    channelID: Optional[str] = None
+    channelTitle: Optional[str] = None
+    isCommentsDisabled: Optional[bool] = None
+
+
+class ChannelVaildationResult(NamedTuple):
+    isVaild: bool
+    channelID: Optional[str] = None
+    channelTitle: Optional[str] = None
+
+class CommunityPostVaildationResult(NamedTuple):
+    valid: bool
+    isolatedPostID: Optional[str] = None
+    validatedPostUrl: Optional[str] = None
+    postOwnerID: Optional[str] = None
+    postOwnerUsername: Optional[str] = None
+
+class ProcessedRegularExpression(NamedTuple):
+    is_valid: bool
+    processedExpression: Optional[str] = None

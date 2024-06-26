@@ -4,7 +4,9 @@ from json import JSONDecodeError
 from typing import NoReturn
 
 from googleapiclient.errors import HttpError
+from google.auth.exceptions import RefreshError
 
+from Scripts.models import RETURN_TO_MAIN_MENU, MainMenu
 from Scripts.shared_imports import B, F, S
 
 
@@ -132,8 +134,7 @@ def fail_client_secrets_loading(jx: JSONDecodeError) -> NoReturn:
     sys.exit()
 
 def fail_to_authorize(exc: Exception) -> bool:
-    if "invalid_grant" in str(exc):
-        traceback.print_exception(exc)
+    if isinstance(exc, RefreshError) and exc.args[1]["error"] == "invalid_grant":
         print(f"{F.YELLOW}[!] Invalid token{S.R} - Requires Re-Authentication")
         return True
     else:
@@ -147,3 +148,11 @@ def fail_to_authorize(exc: Exception) -> bool:
             Try deleting the token.pickle file.{S.R} \nPress Enter to Exit..."
         )
         return False
+
+def on_comments_disabled(video_id: str, videoTitle: str) -> MainMenu:
+    print("--------------------------------------")
+    print(f"\n{B.RED}{F.WHITE} ERROR: {S.R} {F.RED}Unable to get comment count for video: {S.R} {video_id}  |  {videoTitle}")
+    print(f"\n{F.YELLOW}Are comments disabled on this video?{S.R} If not, please report the bug and include the error info above.")
+    print(f"                    Bug Report Link: {F.YELLOW}TJoe.io/bug-report{S.R}")
+    input("\nPress Enter to return to the main menu...")
+    return RETURN_TO_MAIN_MENU

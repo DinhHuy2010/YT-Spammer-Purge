@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 from Scripts.shared_imports import *
 import Scripts.validation as validation
-from Scripts.files import load_config_file
+# from Scripts.files import load_config_file
 
 # Google Authentication Modules
 from googleapiclient.discovery import build
