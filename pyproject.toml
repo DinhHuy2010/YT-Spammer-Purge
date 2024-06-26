@@ -27,6 +27,7 @@ google-api-python-client-stubs = "^1.26.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.4.3"
+pyright = "^1.1.369"
 
 
 [tool.poetry.group.benchmark-distance.dependencies]
@@ -42,23 +43,27 @@ line-length = 320  # Set maximum line length to 100 characters
 # List of error codes to ignore
 # Select specific classes of rules to apply
 select = [
-    "E",  # Error
-    "W",  # Warning
-    "F",  # Flake8's internal messages
-    "I",  # Informational
-    "B",  # Bugbear
-    "C4", # Comprehensive checks (custom or complex checks)
-    "ARG", # Argument related checks
-    "SIM"  # Similarity checks
+    "E",
+    "W",
+    "F",
+    "I",
+    "B",
+    "C4",
+    "ARG",
+    "SIM",
+    "PTH",
+    "PL"
 ]
 ignore = [
     "W291", # Trailing whitespace
+    "E501", # Line too long
     # "W292", # No newline at end of file
     "W293"  # Blank line contains whitespace
 ]
 
 [tool.pyright]
-reportTypedDictNotRequiredAccess = false
+# strict for absoulte clean code™
+typeCheckingMode = "strict"
 
 [build-system]
 requires = ["poetry-core"]

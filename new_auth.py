@@ -6,7 +6,7 @@ import pathlib
 import sys
 import traceback
 from textwrap import dedent
-from typing import TYPE_CHECKING, Mapping, NoReturn, Optional, TypeGuard, Union, cast
+from typing import TYPE_CHECKING, Mapping, Optional, TypeGuard, cast
 
 from cryptography.fernet import InvalidToken
 from google.auth.transport.requests import Request
@@ -14,8 +14,9 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build as discovery_build
 
+from Scripts.files import load_config_file
 from Scripts.models import CurrentUser
-from Scripts.shared_imports import B, F, S
+from Scripts.shared_imports import CONFIG_VERSION, B, F, S
 from Scripts.utils import encryption
 from Scripts.utils.errors import fail_client_secrets_loading, fail_to_authorize, no_client_secrets
 
@@ -36,7 +37,16 @@ DISCOVERY_SERVICE_URL = "https://youtube.googleapis.com/$discovery/rest?version=
 # globals
 _youtube_service: Optional["YouTubeResource"] = None
 _current_user: Optional[CurrentUser] = None
-_ENCRYPTED_TOKEN = True
+_ENCRYPTED_TOKEN = None
+
+
+def is_use_encrypted_token() -> bool:
+    global _ENCRYPTED_TOKEN
+    if _ENCRYPTED_TOKEN is not None:
+        return _ENCRYPTED_TOKEN
+    config = load_config_file(configVersion=CONFIG_VERSION, onlyGetSettings=True)
+    _ENCRYPTED_TOKEN = config["encrypt_token_file"]  # type: ignore
+    return _ENCRYPTED_TOKEN
 
 
 def resolve_client_secrets_location() -> Optional[pathlib.Path]:
@@ -150,7 +160,8 @@ def _save_credentials_unencrypted(creds: Credentials) -> None:
 
 
 def save_credentials(creds: Credentials, is_refreshed: bool) -> None:
-    if _ENCRYPTED_TOKEN:
+    enctoken = is_use_encrypted_token()
+    if enctoken:
         _save_credentials_encrypted(creds, is_refreshed)
     else:
         _save_credentials_unencrypted(creds)
@@ -161,7 +172,7 @@ def remove_token_file():
     TOKEN_FILE_PATH_ENCRYPTED.unlink(missing_ok=True)
 
 
-def _authorize_service() -> YouTubeResource:
+def _authorize_service() -> "YouTubeResource":
     creds = load_credentials_from_token()
     refreshed = False
     if not is_creds_vaild(creds):
@@ -175,7 +186,7 @@ def _authorize_service() -> YouTubeResource:
     return ytservice  # type: ignore
 
 
-def authorize_service() -> Union["YouTubeResource", NoReturn]:
+def authorize_service() -> "YouTubeResource":
     global _youtube_service
     if _youtube_service is not None:
         return _youtube_service
@@ -190,7 +201,7 @@ def authorize_service() -> Union["YouTubeResource", NoReturn]:
             else:
                 remove_token_file()
 
-    _youtube_service = service  # Hack to force set service
+    _youtube_service = service  # cache service
 
     return _youtube_service
 
@@ -206,7 +217,7 @@ def get_current_user(your_channel_id_config: str = "ask") -> CurrentUser:
     if _current_user is not None:
         return _current_user
 
-    from new_vaildation import validate_channel_id
+    from new_validation import validate_channel_id
     # Define fetch function so it can be re-used if issue and need to re-run it
 
     YOUTUBE = authorize_service()
