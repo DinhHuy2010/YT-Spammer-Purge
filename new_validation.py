@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from html import unescape
-from typing import TYPE_CHECKING, Optional, TypeAlias, Union
+from typing import TYPE_CHECKING, Callable, Optional, TypeAlias, Union
 from urllib.parse import parse_qs, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
 from new_auth import authorize_service
-from Scripts.community_downloader import get_post_channel_url
+from Scripts.community_downloader import get_post_channel_url  # type: ignore
 from Scripts.models import ChannelVaildationResult, CommunityPostVaildationResult, MainMenu, ProcessedRegularExpression, VideoVaildationResult
 from Scripts.shared_imports import B, F, S, re
 from Scripts.utils.errors import on_comments_disabled
@@ -21,14 +21,15 @@ YOUTUBE_VIDEO_LINK_REGEX = re.compile(r"^\s*(?P<video_url>(?:(?:https?:)?\/\/)?(
 _YTResource: TypeAlias = Optional["YouTubeResource"]
 
 
-def _wrap_print(silent):
+def _wrap_print(silent: bool) -> Callable[..., None]:
     return (lambda *args, **kwargs: None) if silent is True else print  # noqa: ARG005
 
 
-def _get_channel_id_from_url(channel_link: str) -> Union[str, None]:
+def _get_channel_id_from_url(channel_link: str) -> Optional[str]:
     # taken from https://stackoverflow.com/a/70154677/19114302
+    RESPOK = 200
     resp = requests.get(channel_link)
-    if resp.status_code != 200:
+    if resp.status_code != RESPOK:
         return None
     soup = BeautifulSoup(resp.content)
     channel_link_node = soup.select_one('meta[property="og:url"]')
@@ -78,21 +79,24 @@ class YouTubeValidator:
             .execute()
         )
 
+        items = response.get("items", [])
         # Checks if video exists but is unavailable
-        if not response["items"]:
+        if not items:
             self._log(f"\n{B.RED}{F.WHITE} ERROR: {S.R} {F.RED}No info returned for ID: {S.R} {possibleVideoID} {F.LIGHTRED_EX} - Video may be unavailable or deleted.{S.R}")
             return VideoVaildationResult(False, None, None, None, None)
 
-        item = response["items"][0]
-        if possibleVideoID != item["id"]:
+        item = items[0]
+        if possibleVideoID != item.get("id"):
             self._log("Something very odd happened. YouTube returned a video ID, but it is not equal to what was queried!")
             return VideoVaildationResult(False, None, None, None, None)
 
-        channelID = item["snippet"]["channelId"]
-        channelTitle = item["snippet"]["channelTitle"]
-        videoTitle = unescape(item["snippet"]["title"])
+        snippet = item.get("snippet", {})
+        channelID = snippet.get("channelId")
+        channelTitle = snippet.get("channelTitle")
+        title = snippet.get("title")
+        videoTitle = unescape(title) if title else None
         # When comments are disabled, the commentCount is not included in the response, returning None
-        commentCount = item["statistics"].get("commentCount")
+        commentCount = item.get("statistics", {}).get("commentCount")
         isCommentDisabled = commentCount is None
 
         return VideoVaildationResult(isVaild=True, possibleVideoID=possibleVideoID, videoTitle=videoTitle, commentCount=(-1 if isCommentDisabled else int(commentCount)), channelID=channelID, channelTitle=channelTitle, isCommentsDisabled=isCommentDisabled)
@@ -135,8 +139,9 @@ class YouTubeValidator:
             self._log(f"\n{B.RED}{F.BLACK}Invalid Channel link or ID!{S.R} Channel IDs are 24 characters long and begin with 'UC'.")
             return ChannelVaildationResult(False, None, None)
         response = self.service.channels().list(part="snippet", id=isolatedChannelID).execute()
-        if response.get("items"):
-            channelTitle = response["items"][0]["snippet"]["title"]
+        items = response.get("items")
+        if items:
+            channelTitle = items[0].get("snippet", {}).get("title")
             return ChannelVaildationResult(True, isolatedChannelID, channelTitle)
         else:
             self._log(f"{F.LIGHTRED_EX}Error{S.R}: Unable to Get Channel Title. Please check the channel ID.")
@@ -207,7 +212,7 @@ def validate_post_id(
 # Checks if regex expression is valid, tries to add escapes if necessary
 # From: https://stackoverflow.com/a/51782559/17312053
 def validate_regex(regex_from_user: str) -> ProcessedRegularExpression:
-    def _raw_check(r):
+    def _raw_check(r: str):
         try:
             re.compile(r)
             return True
@@ -218,5 +223,4 @@ def validate_regex(regex_from_user: str) -> ProcessedRegularExpression:
         is_vaild = _raw_check(processedExpression)
         if is_vaild:
             return ProcessedRegularExpression(is_vaild, processedExpression)
-    else:
-        return ProcessedRegularExpression(False, None)
+    return ProcessedRegularExpression(False, None)
