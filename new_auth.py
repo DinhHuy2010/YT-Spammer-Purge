@@ -220,11 +220,11 @@ def get_current_user(your_channel_id_config: str = "ask") -> CurrentUser:
     from new_validation import validate_channel_id
     # Define fetch function so it can be re-used if issue and need to re-run it
 
-    ytservice = authorize_service()
+    YOUTUBE = authorize_service()
 
     def fetch_user():
         results = (
-            ytservice.channels()
+            YOUTUBE.channels()
             .list(
                 part="snippet",  # Can also add "contentDetails" or "statistics"
                 mine=True,
@@ -235,11 +235,11 @@ def get_current_user(your_channel_id_config: str = "ask") -> CurrentUser:
         return results
 
     results = fetch_user()
-    items = results.get("items", [])
+    items = results["items"]
 
     # Fetch the channel ID and title from the API response
     # Catch exceptions if problems getting info
-    if not results or not items:  # Check if results are empty
+    if not items or not results:  # Check if results are empty
         print("\n----------------------------------------------------------------------------------------")
         print(f"{F.YELLOW}Error Getting Current User{S.R}: The YouTube API responded, but did not provide a Channel ID.")
         print(f"{F.CYAN}Known Possible Causes:{S.R}")
@@ -249,19 +249,14 @@ def get_current_user(your_channel_id_config: str = "ask") -> CurrentUser:
         input("\nPress Enter to try logging in again...")
         remove_token_file()
 
-        ytservice = authorize_service()
+        YOUTUBE = authorize_service()
         results = fetch_user()  # Try again
 
     item = items[0]
 
-    minechannelID = item.get("id")
-    if minechannelID is None:
-        # TODO: ??????
-        print("No channel ID was found...")
-        input("Press Enter to Exit...")
-        sys.exit()
+    minechannelID = item["id"]
     try:
-        IDCheck = validate_channel_id(minechannelID, ytservice=ytservice)
+        IDCheck = validate_channel_id(minechannelID, ytservice=YOUTUBE)
         if IDCheck.isVaild is False:
             raise ChannelIDError
         channelTitle = item.get("snippet", {}).get("title")  # If channel ID was found, but not channel title/name
