@@ -3,8 +3,8 @@ import traceback
 from json import JSONDecodeError
 from typing import NoReturn
 
-from googleapiclient.errors import HttpError
 from google.auth.exceptions import RefreshError
+from googleapiclient.errors import HttpError
 
 from Scripts.models import RETURN_TO_MAIN_MENU, MainMenu
 from Scripts.shared_imports import B, F, S

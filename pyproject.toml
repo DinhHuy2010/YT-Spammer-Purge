@@ -37,7 +37,7 @@ more-itertools = "^10.2.0"
 [tool.ruff]
 indent-width = 4  # Force 4 spaces per indentation level
 line-length = 320  # Set maximum line length to 100 characters
-
+exclude = ["Scripts/*filter_variables.py*"] # Exclude filter files
 
 [tool.ruff.lint]
 # List of error codes to ignore
@@ -58,12 +58,18 @@ ignore = [
     "W291", # Trailing whitespace
     "E501", # Line too long
     # "W292", # No newline at end of file
-    "W293"  # Blank line contains whitespace
+    "W293",  # Blank line contains whitespace
+    "PLR0912", # Too many branches
+    "PLR2004", # Magic values
+    "PLR0915", # Too many statements
+    "PLW0603" # Global statement
 ]
 
 [tool.pyright]
 # strict for absoulte clean code™
 typeCheckingMode = "strict"
+ignore = ["Scripts/filter_variables.py"] # Exclude filter files
+reportUnknownMemberType = "none"
 
 [build-system]
 requires = ["poetry-core"]
