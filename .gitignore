@@ -116,6 +116,7 @@ dmypy.json
 # Secrets
 client_secrets.json
 token.pickle
+token.pickle.encrypted
 
 # VS Code and PyCharm Temp files
 .idea
