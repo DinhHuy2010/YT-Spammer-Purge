@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
+from bs4 import BeautifulSoup
+import requests
 from Scripts.shared_imports import *
 import Scripts.auth as auth
 import Scripts.utils as utils
@@ -40,17 +42,18 @@ def validate_video_id(video_url_or_id, silent=False, pass_exception=False, basic
           ).execute()
 
         # Checks if video exists but is unavailable
-        if result['items'] == []:
+        if not result.get('items'):
           print(f"\n{B.RED}{F.WHITE} ERROR: {S.R} {F.RED}No info returned for ID: {S.R} {possibleVideoID} {F.LIGHTRED_EX} - Video may be unavailable or deleted.{S.R}")
           return False, None, None, None, None
 
-        if possibleVideoID == result['items'][0]['id']:
-          channelID = result['items'][0]['snippet']['channelId']
-          channelTitle = result["items"][0]["snippet"]["channelTitle"]
-          videoTitle = unescape(result["items"][0]["snippet"]["title"])
+        item = result['items'][0]
+        if possibleVideoID == item['id']:
+          channelID = item['snippet']['channelId']
+          channelTitle = item["snippet"]["channelTitle"]
+          videoTitle = unescape(item["snippet"]["title"])
           # When comments are disabled, the commentCount is not included in the response, requires catching KeyError
           try:
-            commentCount = result['items'][0]['statistics']['commentCount']
+            commentCount = item['statistics']['commentCount']
           except KeyError:
             if pass_exception == True:
               # If the video has comments disabled, the commentCount is not included in the response, but the video is still valid
@@ -108,7 +111,19 @@ def validate_post_id(post_url):
 
   else:
     return False, None, None, None, None
-  
+
+def _get_channel_id_from_url(channel_link):
+    # this does not use the youtube api
+    # taken from https://stackoverflow.com/a/70154677/19114302
+    resp = requests.get(channel_link)
+    if resp.status_code != 200:
+        return None
+    soup = BeautifulSoup(resp.content, "lxml")
+    channel_link_node = soup.select_one('meta[property="og:url"]')
+    if channel_link_node is None:
+        return None
+    channel_url = urlparse(channel_link_node.attrs["content"])
+    return channel_url.path[len("/channel/") :]
 
 ##################################### VALIDATE CHANNEL ID ##################################
 # Checks if channel ID / Channel Link is correct length and in correct format - If so returns true and isolated channel ID
@@ -122,73 +137,51 @@ def validate_channel_id(inputted_channel):
   if isVideo[0] == True:
     print(f"\n{F.BLACK}{B.LIGHTRED_EX} Invalid Channel ID / Link! {S.R} Looks like you entered a Video ID / Link by mistake.")
     return False, None, None
+  
+  from urllib.parse import ParseResult
+  parsed: ParseResult = urlparse(inputted_channel)
+  if parsed.path.endswith("/"):
+    parsed = parsed._replace(path=parsed.path[:-1])
 
   # Get id from channel link
-  if "/channel/" in inputted_channel:
-    startIndex = inputted_channel.rindex("/") + 1
-    endIndex = len(inputted_channel)
-    
-    if "?" in inputted_channel:
-      endIndex = inputted_channel.rindex("?")
+  if parsed.path.startswith("/channel/"):
+    isolatedChannelID = parsed.path[len("/channel/"):]
 
-    if startIndex < endIndex and endIndex <= len(inputted_channel):
-      isolatedChannelID = inputted_channel[startIndex:endIndex]
-
-  elif "/c/" in inputted_channel or "/user/" in inputted_channel:
-    if "/c/" in inputted_channel:
-      startIndex = inputted_channel.rindex("/c/") + 3 #Start index at at character after /c/
-    elif "/user/" in inputted_channel:
-      startIndex = inputted_channel.rindex("/user/") + 6
-
-    endIndex = len(inputted_channel)
-
-    # If there is a / after the username scoot the endIndex over
-    if startIndex != inputted_channel.rindex("/") + 1:
-      endIndex = inputted_channel.rindex("/") # endIndex is now at the last /
-
-    if startIndex < endIndex and endIndex <= len(inputted_channel):
-      customURL = inputted_channel[startIndex:endIndex]
-      response = auth.YOUTUBE.search().list(part="snippet",q=customURL, maxResults=1, type="channel").execute()
-      if response.get("items"):
-        isolatedChannelID = response.get("items")[0]["snippet"]["channelId"] # Get channel ID from custom channel URL username
-      else:
-        print(f"\n{F.LIGHTRED_EX}No Channel Found!{S.R} YouTube returned no results for that channel. Try entering the @handle instead.")
-        return False, None, None
+  elif any(parsed.path.startswith(x) for x in ["/c/", "/user/"]):
+    isolatedChannelID = _get_channel_id_from_url(inputted_channel)
+    if isolatedChannelID is None:
+      print(f"\n{F.LIGHTRED_EX}No Channel Found!{S.R} YouTube returned no results for that channel. Try entering the @handle instead.")
+      return False, None, None
   
   # Handle legacy style custom URL (no /c/ for custom URL)
-  elif not any(x in inputted_channel for x in notChannelList) and (inputted_channel.lower().startswith("youtube.com/") or str(urlparse(inputted_channel).hostname).lower() in ["youtube.com", "www.youtube.com"]):
-    startIndex = inputted_channel.rindex("/") + 1
-    endIndex = len(inputted_channel)
-
-    if startIndex < endIndex and endIndex <= len(inputted_channel):
-      customURL = inputted_channel[startIndex:endIndex]
-      # First check if actually video ID (video ID regex expression from: https://webapps.stackexchange.com/a/101153)
-      if re.match(r'[0-9A-Za-z_-]{10}[048AEIMQUYcgkosw]', customURL):
-        print(f"{F.LIGHTRED_EX}Invalid Channel ID / Link!{S.R} Did you enter a video ID / link by mistake?")
-        return False, None, None
-
-      response = auth.YOUTUBE.search().list(part="snippet",q=customURL, maxResults=1, type="channel").execute()
-      if response.get("items"):
-        isolatedChannelID = response.get("items")[0]["snippet"]["channelId"] # Get channel ID from custom channel URL username
-      else:
-        print(f"\n{F.LIGHTRED_EX}No Channel Found!{S.R} YouTube returned no results for that channel. Try entering the @handle instead.")
-        return False, None, None
-  
-  # Check if new "handle" identifier is used
-  elif inputted_channel.lower().startswith("@"):
-    # Check for handle validity: Only letters and numbers, periods, underscores, and hyphens, and between 3 and 30 characters
-    if re.match(r'^[a-zA-Z0-9._-]{3,30}$', inputted_channel[1:]):
-      # Does a search for the handle and gets the channel ID from first response
-      response = auth.YOUTUBE.search().list(part="snippet",q=inputted_channel, maxResults=1, type="channel").execute()
-      if response.get("items"):
-        isolatedChannelID = response.get("items")[0]["snippet"]["channelId"]
-      else:
-        print(f"\n{F.LIGHTRED_EX}No Channel Found!{S.R} YouTube returned no results for that channel. Double check it is correct, or try entering the Channel ID.")
-        return False, None, None
-    else:
-      print(f"\n{B.RED}{F.BLACK}Error:{S.R} You appear to have entered an invalid handle! It must be between 3 and 30 characters long and only contain letters, numbers, periods, underscores, and hyphens.")
+  elif not any(x in inputted_channel for x in notChannelList) and (parsed.hostname is not None and parsed.hostname.lower() in ["youtube.com", "www.youtube.com"]):
+    customURL = parsed.path[1:]
+    # First check if actually video ID (video ID regex expression from: https://webapps.stackexchange.com/a/101153)
+    if re.match(r'[0-9A-Za-z_-]{10}[048AEIMQUYcgkosw]', customURL):
+      print(f"{F.LIGHTRED_EX}Invalid Channel ID / Link!{S.R} Did you enter a video ID / link by mistake?")
+      return False, None, None
+    isolatedChannelID = _get_channel_id_from_url(inputted_channel)
+    if isolatedChannelID is None:
+      print(f"\n{F.LIGHTRED_EX}No Channel Found!{S.R} YouTube returned no results for that channel. Try entering the @handle instead.")
       return False, None, None
 
+  # Check if new "handle" identifier is used
+  elif inputted_channel.startswith("@") or parsed.path[1:].startswith("@"):
+    if inputted_channel.startswith("@"):
+      handle = inputted_channel[1:]
+    elif parsed.path[1:].startswith("@"):
+      handle = parsed.path[1:]
+    else:
+      handle = None
+    # Check for handle validity: Only letters and numbers, periods, underscores, and hyphens, and between 3 and 30 characters
+    if handle is None or not re.match(r'^[a-zA-Z0-9._-]{3,30}$', handle):
+      print(f"\n{B.RED}{F.BLACK}Error:{S.R} You appear to have entered an invalid handle! It must be between 3 and 30 characters long and only contain letters, numbers, periods, underscores, and hyphens.")
+      return False, None, None
+    # Does a search for the handle and gets the channel ID from first response
+    isolatedChannelID = _get_channel_id_from_url(f"https://youtube.com/@{handle}")
+    if isolatedChannelID is None:
+      print(f"\n{F.LIGHTRED_EX}No Channel Found!{S.R} YouTube returned no results for that channel. Double check it is correct, or try entering the Channel ID.")
+      return False, None, None
 
   # Channel ID regex expression from: https://webapps.stackexchange.com/a/101153
   elif re.match(r'UC[0-9A-Za-z_-]{21}[AQgw]', inputted_channel):
@@ -225,7 +218,6 @@ def validate_regex(regex_from_user: str):
       is_valid = True
       processedExpression = re.escape(regex_from_user)
     except re.error:
-      print("Failed")
       is_valid = False
       processedExpression = None
 
